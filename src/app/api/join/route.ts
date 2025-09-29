@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Generate session token
-    const sessionToken = generateSessionToken(gameId, player.id, email);
+    const sessionToken = generateSessionToken(gameId, player.id);
 
     // Log join event
     await prisma.eventLog.create({

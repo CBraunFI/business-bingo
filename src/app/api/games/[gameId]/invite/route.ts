@@ -5,10 +5,10 @@ import { sendInviteEmail } from '@/lib/email';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { gameId: string } }
+  { params }: { params: Promise<{ gameId: string }> }
 ) {
   try {
-    const { gameId } = params;
+    const { gameId } = await params;
 
     // Verify admin token
     const authHeader = request.headers.get('authorization');
