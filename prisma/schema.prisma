@@ -1,0 +1,116 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum GameStatus {
+  draft
+  running
+  finished
+}
+
+
+enum TermSource {
+  default
+  custom
+  replaced
+}
+
+model Game {
+  id          String    @id @default(uuid())
+  title       String
+  createdAt   DateTime  @default(now())
+  startedAt   DateTime?
+  endedAt     DateTime?
+  status      GameStatus @default(draft)
+  adminToken  String    @unique
+  shareableLink String  @unique
+  gridSize    Int       @default(5)
+
+  players     Player[]
+  terms       Term[]
+  cards       Card[]
+  eventLogs   EventLog[]
+
+  @@map("games")
+}
+
+model Player {
+  id              String       @id @default(uuid())
+  gameId          String
+  name            String       @default("")
+  icon            String       @default("👤")
+  color           String       @default("#3B82F6")
+  sessionToken    String       @unique
+  joinedAt        DateTime     @default(now())
+  isWinner        Boolean      @default(false)
+
+  game            Game         @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  cards           Card[]
+  markedCells     CardCell[]
+
+  @@map("players")
+}
+
+model Term {
+  id      String     @id @default(uuid())
+  gameId  String
+  text    String
+  enabled Boolean    @default(true)
+  source  TermSource @default(default)
+
+  game    Game       @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  cells   CardCell[]
+
+  @@map("terms")
+}
+
+model Card {
+  id        String   @id @default(uuid())
+  gameId    String
+  playerId  String
+  createdAt DateTime @default(now())
+
+  game      Game       @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  player    Player     @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  cells     CardCell[]
+
+  @@unique([gameId, playerId])
+  @@map("cards")
+}
+
+model CardCell {
+  id              String    @id @default(uuid())
+  cardId          String
+  row             Int
+  col             Int
+  termId          String
+  markedByPlayerId String?
+  markedAt        DateTime?
+
+  card            Card      @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  term            Term      @relation(fields: [termId], references: [id], onDelete: Cascade)
+  markedByPlayer  Player?   @relation(fields: [markedByPlayerId], references: [id], onDelete: SetNull)
+
+  @@unique([cardId, row, col])
+  @@map("card_cells")
+}
+
+model EventLog {
+  id        String   @id @default(uuid())
+  gameId    String
+  type      String
+  payload   Json
+  createdAt DateTime @default(now())
+
+  game      Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@map("event_logs")
+}
