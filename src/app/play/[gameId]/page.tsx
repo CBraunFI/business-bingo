@@ -35,7 +35,7 @@ interface Winner {
 export default function PlayGame() {
   const params = useParams();
   const router = useRouter();
-  const gameId = params.gameId as string;
+  const gameId = params?.gameId as string;
 
   const [game, setGame] = useState<Game | null>(null);
   const [card, setCard] = useState<Card | null>(null);
@@ -107,7 +107,7 @@ export default function PlayGame() {
 
       // Check if game is finished and find winner
       if (gameData.game.status === 'finished') {
-        const winnerPlayer = gameData.game.players.find((p: any) => p.isWinner);
+        const winnerPlayer = gameData.game.players.find((p: { isWinner: boolean }) => p.isWinner);
         if (winnerPlayer) {
           setWinner(winnerPlayer);
           setShowWinnerModal(true);

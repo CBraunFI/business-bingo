@@ -20,7 +20,7 @@ interface Player {
 export default function Lobby() {
   const params = useParams();
   const router = useRouter();
-  const gameId = params.gameId as string;
+  const gameId = params?.gameId as string;
 
   const [game, setGame] = useState<Game | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);

@@ -31,7 +31,7 @@ interface Term {
 export default function AdminPage() {
   const params = useParams();
   const router = useRouter();
-  const gameId = params.gameId as string;
+  const gameId = params?.gameId as string;
 
   const [game, setGame] = useState<Game | null>(null);
   const [activeTab, setActiveTab] = useState<'share' | 'players' | 'terms'>('share');
@@ -227,7 +227,7 @@ export default function AdminPage() {
     );
   }
 
-  const joinedPlayers = game.players.filter(p => p.status === 'joined');
+  // const joinedPlayers = game.players.filter(p => p.status === 'joined');
   const enabledTerms = game.terms?.length || 0;
 
   return (
@@ -358,7 +358,7 @@ export default function AdminPage() {
                         </div>
                         <div className="ml-3">
                           <h3 className="text-sm font-medium text-blue-800">
-                            So funktioniert's
+                            So funktioniert&apos;s
                           </h3>
                           <div className="mt-2 text-sm text-blue-700">
                             <p>Jeder kann über den Link beitreten, indem er seinen Namen eingibt. Automatische Icon- und Farbzuweisung für jeden Spieler.</p>
@@ -397,7 +397,7 @@ export default function AdminPage() {
                   {game.players.length === 0 && (
                     <div className="text-center py-8 text-gray-500">
                       <p>Noch keine Spieler beigetreten.</p>
-                      <p className="text-sm mt-1">Teile den Link im Tab "Link teilen"</p>
+                      <p className="text-sm mt-1">Teile den Link im Tab &quot;Link teilen&quot;</p>
                     </div>
                   )}
                 </div>

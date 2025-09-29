@@ -7,7 +7,7 @@ import Link from 'next/link';
 export default function JoinGame() {
   const router = useRouter();
   const params = useParams();
-  const shareableLink = params.shareableLink as string;
+  const shareableLink = params?.shareableLink as string;
 
   const [playerName, setPlayerName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
