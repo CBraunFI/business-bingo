@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { initializeSocketClient, getSocket } from '@/lib/socketClient';
 
@@ -61,26 +61,7 @@ export default function PlayGame() {
     }
   }, []);
 
-  useEffect(() => {
-    if (!mounted) return;
-
-    if (!sessionToken || !playerId) {
-      router.push('/');
-      return;
-    }
-
-    fetchCardData();
-    initializeSocket();
-
-    return () => {
-      const socket = getSocket();
-      if (socket) {
-        socket.disconnect();
-      }
-    };
-  }, [gameId, sessionToken, playerId, mounted]);
-
-  const fetchCardData = async () => {
+  const fetchCardData = useCallback(async () => {
     try {
       const [gameResponse, cardResponse] = await Promise.all([
         fetch(`/api/games/${gameId}`, {
@@ -119,9 +100,9 @@ export default function PlayGame() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [gameId, sessionToken]);
 
-  const initializeSocket = () => {
+  const initializeSocket = useCallback(() => {
     if (!sessionToken) return;
 
     const socket = initializeSocketClient(sessionToken);
@@ -150,7 +131,26 @@ export default function PlayGame() {
     socket.on('disconnect', () => {
       console.log('Disconnected from server');
     });
-  };
+  }, [sessionToken, fetchCardData]);
+
+  useEffect(() => {
+    if (!mounted) return;
+
+    if (!sessionToken || !playerId) {
+      router.push('/');
+      return;
+    }
+
+    fetchCardData();
+    initializeSocket();
+
+    return () => {
+      const socket = getSocket();
+      if (socket) {
+        socket.disconnect();
+      }
+    };
+  }, [gameId, sessionToken, playerId, mounted, fetchCardData, initializeSocket, router]);
 
   const toggleCell = async (cellId: string) => {
     if (!sessionToken || game?.status !== 'running') {

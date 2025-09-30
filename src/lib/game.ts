@@ -127,7 +127,7 @@ export async function checkBingo(cardId: string): Promise<boolean> {
   return false;
 }
 
-export async function toggleCell(cellId: string, playerId: string): Promise<{ isBingo: boolean; cardId: string }> {
+export async function toggleCell(cellId: string, playerId: string): Promise<{ isBingo: boolean; cardId: string; marked: boolean }> {
   const cell = await prisma.cardCell.findUnique({
     where: { id: cellId },
     include: {
@@ -145,16 +145,17 @@ export async function toggleCell(cellId: string, playerId: string): Promise<{ is
 
   // Toggle the cell
   const isMarked = !!cell.markedByPlayerId;
+  const newMarkedState = !isMarked;
   await prisma.cardCell.update({
     where: { id: cellId },
     data: {
-      markedByPlayerId: isMarked ? null : playerId,
-      markedAt: isMarked ? null : new Date()
+      markedByPlayerId: newMarkedState ? playerId : null,
+      markedAt: newMarkedState ? new Date() : null
     }
   });
 
   // Check for bingo
   const isBingo = await checkBingo(cell.cardId);
 
-  return { isBingo, cardId: cell.cardId };
+  return { isBingo, cardId: cell.cardId, marked: newMarkedState };
 }

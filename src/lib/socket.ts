@@ -1,7 +1,8 @@
 import { Server as NetServer } from 'http';
-import { NextApiRequest, NextApiResponse } from 'next';
+import { NextApiResponse } from 'next';
 import { Server as ServerIO } from 'socket.io';
 import { verifyToken } from './auth';
+import { setSocketIO } from './getSocketIO';
 
 export type NextApiResponseServerIO = NextApiResponse & {
   socket: {
@@ -55,7 +56,7 @@ export function initializeSocket(server: NetServer): ServerIO {
 
       socket.data = socketData;
       next();
-    } catch (error) {
+    } catch {
       next(new Error('Authentication failed'));
     }
   });
@@ -86,5 +87,6 @@ export function initializeSocket(server: NetServer): ServerIO {
     });
   });
 
+  setSocketIO(io);
   return io;
 }

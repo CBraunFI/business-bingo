@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyToken } from '@/lib/auth';
 import { generateBingoCard } from '@/lib/game';
+import { getSocketIO } from '@/lib/getSocketIO';
+import { emitGameStarted } from '@/lib/socketEmitter';
 
 export async function POST(
   request: NextRequest,
@@ -80,12 +82,10 @@ export async function POST(
     });
 
     // Generate bingo cards for all joined players
-    console.log('Generating cards for players:', game.players.map(p => ({ id: p.id, name: p.name })));
     try {
       await Promise.all(
         game.players.map(player => generateBingoCard(gameId, player.id))
       );
-      console.log('Card generation completed successfully');
     } catch (cardError) {
       console.error('Card generation failed:', cardError);
       throw cardError;
@@ -102,6 +102,16 @@ export async function POST(
         }
       }
     });
+
+    // Emit WebSocket event
+    const io = getSocketIO();
+    if (io) {
+      emitGameStarted(io, gameId, {
+        status: 'running',
+        startedAt: updatedGame.startedAt,
+        playerCount: game.players.length
+      });
+    }
 
     return NextResponse.json({
       game: updatedGame,

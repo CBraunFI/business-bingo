@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyToken } from '@/lib/auth';
+import { getSocketIO } from '@/lib/getSocketIO';
+import { emitGameFinished } from '@/lib/socketEmitter';
 
 export async function POST(
   request: NextRequest,
@@ -62,11 +64,20 @@ export async function POST(
         gameId,
         type: 'game_finished',
         payload: {
-          finishedBy: payload.email,
+          finishedBy: 'admin',
           manual: true
         }
       }
     });
+
+    // Emit WebSocket event
+    const io = getSocketIO();
+    if (io) {
+      emitGameFinished(io, gameId, {
+        manual: true,
+        endedAt: updatedGame.endedAt
+      });
+    }
 
     return NextResponse.json({
       game: updatedGame,

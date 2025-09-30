@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { generateSessionToken } from '@/lib/auth';
 import { v4 as uuidv4 } from 'uuid';
-
-const PLAYER_ICONS = ['🎯', '🎨', '🎭', '🎪', '🎸', '🎺', '🎷', '🎻', '🎲', '🎰', '🚀', '⭐', '🌟', '💫', '⚡', '🔥', '💎', '🎊', '🎉', '🏆'];
-const PLAYER_COLORS = ['#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6', '#F97316', '#06B6D4', '#84CC16', '#EC4899', '#6366F1'];
+import { getSocketIO } from '@/lib/getSocketIO';
+import { emitPlayerJoined } from '@/lib/socketEmitter';
+import { PLAYER_ICONS, PLAYER_COLORS } from '@/config/constants';
 
 export async function POST(
   request: NextRequest,
@@ -96,6 +96,17 @@ export async function POST(
 
     // Generate JWT for this session
     const jwt = generateSessionToken(game.id, player.id);
+
+    // Emit player joined event
+    const io = getSocketIO();
+    if (io) {
+      emitPlayerJoined(io, game.id, {
+        playerId: player.id,
+        name: player.name,
+        icon: player.icon,
+        color: player.color
+      });
+    }
 
     return NextResponse.json({
       success: true,

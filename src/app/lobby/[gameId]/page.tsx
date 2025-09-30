@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { initializeSocketClient, getSocket } from '@/lib/socketClient';
 
@@ -12,9 +12,11 @@ interface Game {
 
 interface Player {
   id: string;
-  email: string;
-  status: 'invited' | 'joined';
+  name: string;
+  icon: string;
+  color: string;
   isWinner: boolean;
+  status?: string;
 }
 
 export default function Lobby() {
@@ -39,26 +41,7 @@ export default function Lobby() {
     }
   }, []);
 
-  useEffect(() => {
-    if (!mounted) return;
-
-    if (!sessionToken || !playerId) {
-      router.push('/');
-      return;
-    }
-
-    fetchGameData();
-    initializeSocket();
-
-    return () => {
-      const socket = getSocket();
-      if (socket) {
-        socket.disconnect();
-      }
-    };
-  }, [gameId, sessionToken, playerId, mounted]);
-
-  const fetchGameData = async () => {
+  const fetchGameData = useCallback(async () => {
     try {
       const response = await fetch(`/api/games/${gameId}`, {
         headers: {
@@ -87,9 +70,9 @@ export default function Lobby() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [gameId, sessionToken, playerId, router]);
 
-  const initializeSocket = () => {
+  const initializeSocket = useCallback(() => {
     if (!sessionToken) return;
 
     const socket = initializeSocketClient(sessionToken);
@@ -111,7 +94,26 @@ export default function Lobby() {
     socket.on('disconnect', () => {
       console.log('Disconnected from server');
     });
-  };
+  }, [sessionToken, gameId, router, fetchGameData]);
+
+  useEffect(() => {
+    if (!mounted) return;
+
+    if (!sessionToken || !playerId) {
+      router.push('/');
+      return;
+    }
+
+    fetchGameData();
+    initializeSocket();
+
+    return () => {
+      const socket = getSocket();
+      if (socket) {
+        socket.disconnect();
+      }
+    };
+  }, [gameId, sessionToken, playerId, mounted, fetchGameData, initializeSocket, router]);
 
   if (isLoading) {
     return (
@@ -200,17 +202,18 @@ export default function Lobby() {
                         : 'bg-gray-50 border-gray-200'
                     }`}
                   >
-                    <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center mr-3">
-                      <span className="text-gray-600 font-medium">
-                        {player.email.charAt(0).toUpperCase()}
+                    <div
+                      className="w-10 h-10 rounded-full flex items-center justify-center mr-3"
+                      style={{ backgroundColor: player.color }}
+                    >
+                      <span className="text-2xl">
+                        {player.icon}
                       </span>
                     </div>
                     <div className="flex-1">
                       <p className="font-medium text-black">
-                        {player.id === currentPlayer?.id ? 'Du' : `Spieler`}
-                      </p>
-                      <p className="text-sm text-black">
-                        {player.id === currentPlayer?.id ? player.email : '***@***.***'}
+                        {player.name}
+                        {player.id === currentPlayer?.id && ' (Du)'}
                       </p>
                     </div>
                     <div className="w-3 h-3 bg-green-500 rounded-full"></div>

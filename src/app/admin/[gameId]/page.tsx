@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -41,6 +41,8 @@ export default function AdminPage() {
   const [adminToken, setAdminToken] = useState<string | null>(null);
   const [shareableLink, setShareableLink] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [editingTermId, setEditingTermId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState('');
 
   useEffect(() => {
     setMounted(true);
@@ -50,18 +52,7 @@ export default function AdminPage() {
     setShareableLink(link);
   }, []);
 
-  useEffect(() => {
-    if (!mounted) return;
-
-    if (!adminToken) {
-      router.push('/');
-      return;
-    }
-
-    fetchGame();
-  }, [gameId, adminToken, mounted]);
-
-  const fetchGame = async () => {
+  const fetchGame = useCallback(async () => {
     try {
       const response = await fetch(`/api/games/${gameId}`, {
         headers: {
@@ -80,26 +71,19 @@ export default function AdminPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [gameId, adminToken]);
 
-  const sendInvitations = async () => {
-    try {
-      const response = await fetch(`/api/games/${gameId}/invite`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${adminToken}`
-        }
-      });
+  useEffect(() => {
+    if (!mounted) return;
 
-      if (!response.ok) {
-        throw new Error('Fehler beim Versenden der Einladungen');
-      }
-
-      alert('Einladungen wurden versendet!');
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Fehler beim Versenden der Einladungen');
+    if (!adminToken) {
+      router.push('/');
+      return;
     }
-  };
+
+    fetchGame();
+  }, [gameId, adminToken, mounted, fetchGame, router]);
+
 
   const startGame = async () => {
     try {
@@ -196,6 +180,47 @@ export default function AdminPage() {
       await fetchGame();
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Fehler beim Hinzufügen des Begriffs');
+    }
+  };
+
+  const startEditTerm = (term: Term) => {
+    setEditingTermId(term.id);
+    setEditingText(term.text);
+  };
+
+  const cancelEditTerm = () => {
+    setEditingTermId(null);
+    setEditingText('');
+  };
+
+  const replaceTerm = async (termId: string) => {
+    if (!editingText.trim()) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/games/${gameId}/terms`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${adminToken}`
+        },
+        body: JSON.stringify({
+          action: 'replace',
+          termId,
+          text: editingText.trim()
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Fehler beim Ersetzen des Begriffs');
+      }
+
+      setEditingTermId(null);
+      setEditingText('');
+      await fetchGame();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Fehler beim Ersetzen des Begriffs');
     }
   };
 
@@ -425,16 +450,54 @@ export default function AdminPage() {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-96 overflow-y-auto">
                   {game.terms?.map(term => (
-                    <div key={term.id} className="flex items-center justify-between p-2 bg-gray-50 rounded text-sm">
-                      <span className={term.source !== 'default' ? 'font-medium text-black' : 'text-black'}>
-                        {term.text}
-                      </span>
-                      <button
-                        onClick={() => toggleTerm(term.id)}
-                        className={`w-8 h-4 rounded-full bg-green-500 relative transition-colors`}
-                      >
-                        <div className={`w-3 h-3 bg-white rounded-full absolute top-0.5 transition-transform translate-x-4`} />
-                      </button>
+                    <div key={term.id} className="flex items-center justify-between p-2 bg-gray-50 rounded text-sm gap-2">
+                      {editingTermId === term.id ? (
+                        <>
+                          <input
+                            type="text"
+                            value={editingText}
+                            onChange={(e) => setEditingText(e.target.value)}
+                            className="flex-1 px-2 py-1 border border-gray-300 rounded text-black"
+                            onKeyPress={(e) => {
+                              if (e.key === 'Enter') replaceTerm(term.id);
+                              if (e.key === 'Escape') cancelEditTerm();
+                            }}
+                            autoFocus
+                          />
+                          <button
+                            onClick={() => replaceTerm(term.id)}
+                            className="px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700"
+                          >
+                            ✓
+                          </button>
+                          <button
+                            onClick={cancelEditTerm}
+                            className="px-2 py-1 bg-gray-400 text-white rounded text-xs hover:bg-gray-500"
+                          >
+                            ✕
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <span className={term.source !== 'default' ? 'font-medium text-black flex-1' : 'text-black flex-1'}>
+                            {term.text}
+                          </span>
+                          <button
+                            onClick={() => startEditTerm(term)}
+                            className="px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600"
+                            disabled={game.status !== 'draft'}
+                          >
+                            ✏️
+                          </button>
+                          <button
+                            onClick={() => toggleTerm(term.id)}
+                            className={`w-8 h-4 rounded-full bg-green-500 relative transition-colors`}
+                            disabled={game.status !== 'draft'}
+                          >
+                            <div className={`w-3 h-3 bg-white rounded-full absolute top-0.5 transition-transform translate-x-4`} />
+                          </button>
+                        </>
+                      )}
                     </div>
                   ))}
                 </div>

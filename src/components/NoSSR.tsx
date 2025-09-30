@@ -1,7 +1,6 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { ComponentType } from 'react';
 
 interface NoSSRProps {
   children: React.ReactNode;

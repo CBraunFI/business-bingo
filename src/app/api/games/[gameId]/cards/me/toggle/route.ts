@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyToken } from '@/lib/auth';
 import { toggleCell } from '@/lib/game';
+import { getSocketIO } from '@/lib/getSocketIO';
+import { emitCellUpdated, emitBingo, emitGameFinished } from '@/lib/socketEmitter';
 
 export async function POST(
   request: NextRequest,
@@ -60,6 +62,11 @@ export async function POST(
     // Toggle the cell
     const result = await toggleCell(cellId, payload.playerId);
 
+    // Get player info for emissions
+    const player = await prisma.player.findUnique({
+      where: { id: payload.playerId }
+    });
+
     if (result.isBingo) {
       // Mark player as winner and finish game
       await prisma.$transaction(async (tx) => {
@@ -82,12 +89,28 @@ export async function POST(
             type: 'bingo',
             payload: {
               playerId: payload.playerId,
-              playerEmail: payload.email,
+              playerName: player?.name,
               cardId: result.cardId
             }
           }
         });
       });
+
+      // Emit bingo and game finished events
+      const io = getSocketIO();
+      if (io) {
+        emitBingo(io, gameId, {
+          playerId: payload.playerId,
+          playerName: player?.name,
+          playerIcon: player?.icon,
+          playerColor: player?.color
+        });
+        emitGameFinished(io, gameId, {
+          winnerId: payload.playerId,
+          winnerName: player?.name,
+          endedAt: new Date()
+        });
+      }
     }
 
     // Log the cell toggle
@@ -98,11 +121,21 @@ export async function POST(
         payload: {
           cellId,
           playerId: payload.playerId,
-          playerEmail: payload.email,
+          playerName: player?.name,
           isBingo: result.isBingo
         }
       }
     });
+
+    // Emit cell update event
+    const io = getSocketIO();
+    if (io) {
+      emitCellUpdated(io, gameId, {
+        cellId,
+        playerId: payload.playerId,
+        marked: result.marked
+      });
+    }
 
     return NextResponse.json({
       success: true,

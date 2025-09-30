@@ -111,13 +111,12 @@ const defaultTerms = [
 async function main() {
   console.log('Start seeding...');
 
-  // Clear existing default terms
-  await prisma.term.deleteMany({
-    where: {
-      source: 'default'
-    }
-  });
+  // Note: Terms are created per-game when a game is created (see src/lib/game.ts)
+  // The defaultTerms array above serves as the reference list for the 100 business terms
+  // This seed script can be used to clean up test data if needed
 
+  console.log(`Default terms list contains ${defaultTerms.length} terms`);
+  console.log('No seeding needed - terms are created per game on game creation');
   console.log('Seeding complete.');
 }
 
